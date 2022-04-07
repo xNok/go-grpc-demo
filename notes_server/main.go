@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -42,6 +43,38 @@ func (s *notesServer) Load(ctx context.Context, search *notes.NoteSearch) (*note
 	}
 
 	return n, nil
+}
+
+// Implment the notes.NotesServer interface
+func (s *notesServer) SaveLargeNote(stream notes.Notes_SaveLargeNoteServer) error {
+	var finalBody []byte
+	var finalTitle string
+	for {
+		// Get a packet
+		note, err := stream.Recv()
+		if err == io.EOF {
+			log.Printf("Recieved a note to save: %v", finalTitle)
+			err := notes.SaveToDisk(&notes.Note{
+				Title: finalTitle,
+				Body:  finalBody,
+			}, "testdata")
+
+			if err != nil {
+				stream.SendAndClose(&notes.NoteSaveReply{Saved: false})
+				return err
+			}
+
+			stream.SendAndClose(&notes.NoteSaveReply{Saved: true})
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		log.Printf("Recieved chunk a note to save: %v", note.Body)
+		// Concat packet to create final note
+		finalBody = append(finalBody, note.Body...)
+		finalTitle = note.Title
+	}
 }
 
 func main() {

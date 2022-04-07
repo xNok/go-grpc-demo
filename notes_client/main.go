@@ -17,6 +17,20 @@ var (
 	addr = flag.String("addr", "localhost:50051", "the address to connect to")
 )
 
+// create bytes chunks for streaming
+func split(buf []byte, lim int) [][]byte {
+	var chunk []byte
+	chunks := make([][]byte, 0, len(buf)/lim+1)
+	for len(buf) >= lim {
+		chunk, buf = buf[:lim], buf[lim:]
+		chunks = append(chunks, chunk)
+	}
+	if len(buf) > 0 {
+		chunks = append(chunks, buf[:len(buf)])
+	}
+	return chunks
+}
+
 func main() {
 	flag.Parse()
 	// Set up a connection to the server.
@@ -35,6 +49,7 @@ func main() {
 	saveCmd := flag.NewFlagSet("save", flag.ExitOnError)
 	saveTitle := saveCmd.String("title", "", "Give a title to your note")
 	saveBody := saveCmd.String("content", "", "Type what you like to remember")
+	saveLargeBody := saveCmd.Bool("l", false, "flag to upload a note broken as a stream")
 
 	//define expected flags for load
 	loadCmd := flag.NewFlagSet("load", flag.ExitOnError)
@@ -48,13 +63,35 @@ func main() {
 	switch os.Args[1] {
 	case "save":
 		saveCmd.Parse(os.Args[2:])
-		_, err := c.Save(ctx, &notes.Note{
-			Title: *saveTitle,
-			Body:  []byte(*saveBody),
-		})
 
-		if err != nil {
-			log.Fatalf("The note could not be saved: %v", err)
+		if *saveLargeBody {
+			stream, err := c.SaveLargeNote(ctx)
+			if err != nil {
+				log.Fatalf("Fail to create stream: %v", err)
+			}
+			chunks := split([]byte(*saveBody), 10)
+			for _, chunk := range chunks {
+				note := &notes.Note{
+					Title: *saveTitle,
+					Body:  chunk,
+				}
+				if err := stream.Send(note); err != nil {
+					log.Fatalf("%v.Send(%v) = %v", stream, note, err)
+				}
+			}
+			_, err = stream.CloseAndRecv()
+			if err != nil {
+				log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+			}
+		} else {
+			_, err := c.Save(ctx, &notes.Note{
+				Title: *saveTitle,
+				Body:  []byte(*saveBody),
+			})
+
+			if err != nil {
+				log.Fatalf("The note could not be saved: %v", err)
+			}
 		}
 
 		fmt.Printf("Your note was saved: %v\n", *saveTitle)

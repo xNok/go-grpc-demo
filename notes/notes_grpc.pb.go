@@ -22,6 +22,8 @@ type NotesClient interface {
 	Save(ctx context.Context, in *Note, opts ...grpc.CallOption) (*NoteSaveReply, error)
 	// Retriving a note
 	Load(ctx context.Context, in *NoteSearch, opts ...grpc.CallOption) (*Note, error)
+	// Save a note via Streaming
+	SaveLargeNote(ctx context.Context, opts ...grpc.CallOption) (Notes_SaveLargeNoteClient, error)
 }
 
 type notesClient struct {
@@ -50,6 +52,40 @@ func (c *notesClient) Load(ctx context.Context, in *NoteSearch, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *notesClient) SaveLargeNote(ctx context.Context, opts ...grpc.CallOption) (Notes_SaveLargeNoteClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Notes_ServiceDesc.Streams[0], "/notes.Notes/SaveLargeNote", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &notesSaveLargeNoteClient{stream}
+	return x, nil
+}
+
+type Notes_SaveLargeNoteClient interface {
+	Send(*Note) error
+	CloseAndRecv() (*NoteSaveReply, error)
+	grpc.ClientStream
+}
+
+type notesSaveLargeNoteClient struct {
+	grpc.ClientStream
+}
+
+func (x *notesSaveLargeNoteClient) Send(m *Note) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *notesSaveLargeNoteClient) CloseAndRecv() (*NoteSaveReply, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(NoteSaveReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // NotesServer is the server API for Notes service.
 // All implementations must embed UnimplementedNotesServer
 // for forward compatibility
@@ -58,6 +94,8 @@ type NotesServer interface {
 	Save(context.Context, *Note) (*NoteSaveReply, error)
 	// Retriving a note
 	Load(context.Context, *NoteSearch) (*Note, error)
+	// Save a note via Streaming
+	SaveLargeNote(Notes_SaveLargeNoteServer) error
 	mustEmbedUnimplementedNotesServer()
 }
 
@@ -70,6 +108,9 @@ func (UnimplementedNotesServer) Save(context.Context, *Note) (*NoteSaveReply, er
 }
 func (UnimplementedNotesServer) Load(context.Context, *NoteSearch) (*Note, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Load not implemented")
+}
+func (UnimplementedNotesServer) SaveLargeNote(Notes_SaveLargeNoteServer) error {
+	return status.Errorf(codes.Unimplemented, "method SaveLargeNote not implemented")
 }
 func (UnimplementedNotesServer) mustEmbedUnimplementedNotesServer() {}
 
@@ -120,6 +161,32 @@ func _Notes_Load_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Notes_SaveLargeNote_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NotesServer).SaveLargeNote(&notesSaveLargeNoteServer{stream})
+}
+
+type Notes_SaveLargeNoteServer interface {
+	SendAndClose(*NoteSaveReply) error
+	Recv() (*Note, error)
+	grpc.ServerStream
+}
+
+type notesSaveLargeNoteServer struct {
+	grpc.ServerStream
+}
+
+func (x *notesSaveLargeNoteServer) SendAndClose(m *NoteSaveReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *notesSaveLargeNoteServer) Recv() (*Note, error) {
+	m := new(Note)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Notes_ServiceDesc is the grpc.ServiceDesc for Notes service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -136,6 +203,12 @@ var Notes_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Notes_Load_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SaveLargeNote",
+			Handler:       _Notes_SaveLargeNote_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "notes/notes.proto",
 }

@@ -9,6 +9,9 @@ service Notes {
   rpc Save (Note) returns (NoteSaveReply) {}
   // Retriving a note
   rpc Load (NoteSearch) returns (Note) {}
+
+  // Save a note via Streaming
+  rpc SaveLargeNote (stream Note) returns (NoteSaveReply) {}
 }
 
 // The request message containing the note title
