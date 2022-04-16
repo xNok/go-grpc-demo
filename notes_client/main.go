@@ -53,7 +53,7 @@ func main() {
 
 	//define expected flags for load
 	loadCmd := flag.NewFlagSet("load", flag.ExitOnError)
-	loadKeywork := loadCmd.String("keyword", "", "A keyworkd you'd like to find in your notes")
+	loadKeyword := loadCmd.String("keyword", "", "A keyworkd you'd like to find in your notes")
 
 	if len(os.Args) < 2 {
 		fmt.Println("expected 'save' or 'load' subcommands")
@@ -99,7 +99,7 @@ func main() {
 	case "load":
 		loadCmd.Parse(os.Args[2:])
 		note, err := c.Load(ctx, &notes.NoteSearch{
-			Keyword: *loadKeywork,
+			Keyword: *loadKeyword,
 		})
 
 		if err != nil {
