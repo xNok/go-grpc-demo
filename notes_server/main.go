@@ -70,7 +70,7 @@ func (s *notesServer) SaveLargeNote(stream notes.Notes_SaveLargeNoteServer) erro
 		if err != nil {
 			return err
 		}
-		log.Printf("Recieved chunk a note to save: %v", note.Body)
+		log.Printf("Recieved a chunk of the note to save: %v", note.Body)
 		// Concat packet to create final note
 		finalBody = append(finalBody, note.Body...)
 		finalTitle = note.Title
