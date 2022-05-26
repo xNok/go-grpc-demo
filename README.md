@@ -1,4 +1,4 @@
-# Go gRPB demo
+# Go gRPC demo
 
 This demo gRPC application is a simple note-taking application. You can use the client to:
 * Save a note by providing a title and a content
