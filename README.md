@@ -1,12 +1,14 @@
 # Go gRPB demo
 
-This demo gRPV application is a simple note taking applcation. You can use the client to:
-* Save a note bu providing a title and a content
-* Load a note by seaching a keyword
+This demo gRPC application is a simple note-taking application. You can use the client to:
+* Save a note by providing a title and a content
+* Load a note by searching a keyword
+
+Fully tutorial can be found here: https://speedscale.com/2022/05/03/using-grpc-with-golang/
 
 ## How to get started?
 
-You will need `protoc` to generate proto buffer code
+You will need `protoc` to generate proto buffer code.
 
 ```
 sudo apt update
@@ -27,7 +29,7 @@ Run the server
 go run ./notes_server/main.go
 ```
 
-Unse the client to interact with the server.
+Use the client to interact with the server.
 
 Save a note:
 
